@@ -1,0 +1,54 @@
+name: Terraform Policy Validation
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Install OPA
+        run: |
+          curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static
+          chmod +x opa
+          sudo mv opa /usr/local/bin/
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Terraform Init
+        working-directory: terraform
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: terraform
+        run: |
+          terraform plan -out=tfplan
+          terraform show -json tfplan > ../tfplan.json
+
+      - name: Run OPA Policy Check
+        run: |
+          RESULT=$(opa eval --input tfplan.json --data policies/ "data.terraform.analysis.deny")
+
+          echo "$RESULT"
+
+          VIOLATIONS=$(echo "$RESULT" | jq -r '.result[0].expressions[0].value | keys[]')
+
+          if [ -n "$VIOLATIONS" ]; then
+            echo "❌ POLICY VIOLATIONS:"
+            echo "$VIOLATIONS"
+            exit 1
+          fi
+
+          echo "✅ All policies passed"
