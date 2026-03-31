@@ -10,7 +10,7 @@ resource "aws_s3_bucket" "demo" {
   Environment = "dev"
   Owner       = "kranthi"
   Project     = "OPA"
- }
+}
 }
 
 resource "aws_instance" "web" {
