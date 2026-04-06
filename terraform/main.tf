@@ -4,7 +4,7 @@ provider "aws" {
 
 resource "aws_s3_bucket" "demo" {
   bucket = "kranthi-demo-bucket-12345"
-  acl    = "private"   # ❌ should fail
+  acl    = "public"   # ❌ should fail
 
   tags = {
   Environment = "dev"
